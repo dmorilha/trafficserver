@@ -21,8 +21,7 @@ experimental_magick_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-variable
 pkglib_LTLIBRARIES += experimental/magick/magick.la
 
 experimental_magick_la_SOURCES = \
-  experimental/magick/ImageTransform.cc \
-  experimental/magick/convert.c
+  experimental/magick/ImageTransform.cc
 
 experimental_magick_la_LDFLAGS = \
   $(AM_LDFLAGS) \
