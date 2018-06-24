@@ -15,18 +15,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-experimental_magick_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBMAGICKCPP_CFLAGS)
-experimental_magick_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-variable
+experimental_magick_magick_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBMAGICKCPP_CFLAGS)
+experimental_magick_magick_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-variable
 
 pkglib_LTLIBRARIES += experimental/magick/magick.la
 
-experimental_magick_la_SOURCES = \
-  experimental/magick/ImageTransform.cc
+experimental_magick_magick_la_SOURCES = \
+  experimental/magick/magick.cc
 
-experimental_magick_la_LDFLAGS = \
+experimental_magick_magick_la_LDFLAGS = \
   $(AM_LDFLAGS) \
   -L$(top_builddir)/lib/cppapi
 
-experimental_magick_la_LIBADD = \
+experimental_magick_magick_la_LIBADD = \
   -latscppapi \
   $(LIBMAGICKCPP_LIBS)
