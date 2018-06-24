@@ -24,7 +24,7 @@
 #include <atscppapi/TransformationPlugin.h>
 #include <atscppapi/Logger.h>
 
-#include <Magick++.h>
+#include <MagickWand/convert.h>
 
 using std::string;
 using namespace Magick;
