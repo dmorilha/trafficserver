@@ -36,8 +36,6 @@
 using std::string;
 using namespace atscppapi;
 
-const char * const TAG = "magick";
-
 typedef std::vector< char > CharVector;
 typedef std::vector< char * > CharPointerVector;
 typedef std::vector< std::string_view > StringViewVector;
@@ -259,10 +257,6 @@ struct ImageTransform : TransformationPlugin {
 
   void handleReadResponseHeaders(Transaction & t) override {
     //TODO(daniel): content-type has to be extracted from ImageInfo?
-    //transaction.getServerResponse().getHeaders()["Content-Type"] = "image/webp";
-
-    //TS_DEBUG(TAG, "url %s", transaction.getServerRequest().getUrl().getUrlString().c_str());
-
     t.resume();
   }
 
@@ -277,7 +271,6 @@ struct ImageTransform : TransformationPlugin {
 
     std::cout << "blob size " << blob_.size() << std::endl;
     wand.readBlob(blob_);
-    //wand.read("/tmp/image2");
     wand.write("mpr:b");
 
     bool result = MagickCommandGenesis(image.info, ConvertImageCommand,
@@ -335,11 +328,6 @@ struct GlobalHookPlugin : GlobalPlugin {
                 std::move(magick), std::move(argumentMap)));
         }
       }
-    }
-
-    if (contentType.find("jpeg") != string::npos
-        || contentType.find("png") != string::npos) {
-      //TS_DEBUG(TAG, "Content type is either jpeg or png. Converting to webp");
     }
 
     t.resume();
