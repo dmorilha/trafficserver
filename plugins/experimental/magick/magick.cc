@@ -42,50 +42,105 @@ typedef std::vector< char > CharVector;
 typedef std::vector< char * > CharPointerVector;
 typedef std::vector< std::string_view > StringViewVector;
 
-struct MagickExceptionInfo {
+namespace magick {
+
+struct Exception {
   ExceptionInfo * info;
 
-  ~MagickExceptionInfo() {
+  ~Exception() {
     assert(nullptr != info);
     info = DestroyExceptionInfo(info);
   }
 
-  MagickExceptionInfo(void) :
+  Exception(void) :
     info(AcquireExceptionInfo()) {
     assert(nullptr != info);
   }
 };
 
-struct MagickImageInfo {
+struct Image {
   ImageInfo * info;
 
-  ~MagickImageInfo() {
+  ~Image() {
     assert(nullptr != info);
     info = DestroyImageInfo(info);
   }
 
-  MagickImageInfo(void) :
+  Image(void) :
     info(AcquireImageInfo()) {
     assert(nullptr != info);
-    info->temporary = MagickTrue;
-  }
-
-  void setBlob(const std::vector< char > & v) const {
-    assert( ! v.empty());
-    assert(nullptr != info);
-    SetImageInfoBlob(info, reinterpret_cast< const void * >(v.data()), v.size());
   }
 };
 
-struct MagickCore {
-  ~MagickCore() {
+struct Wand {
+  MagickWand * wand;
+  void * blob;
+
+  ~Wand() {
+    assert(nullptr != wand);
+    wand = DestroyMagickWand(wand);
+    if (nullptr == blob) {
+      blob = MagickRelinquishMemory(blob);
+    }
+  }
+
+  Wand(void) :
+    wand(NewMagickWand()), blob(nullptr)  {
+    assert(nullptr != wand);
+  }
+
+  void clear(void) const {
+    assert(nullptr != wand);
+    ClearMagickWand(wand);
+  }
+
+  std::string_view get(void) {
+    assert(nullptr != wand);
+    std::size_t length = 0;
+    if (nullptr != blob) {
+      blob = MagickRelinquishMemory(blob);
+    }
+    MagickResetIterator(wand);
+    blob = MagickGetImagesBlob(wand, &length);
+    return std::string_view(reinterpret_cast< char * >(blob), length);
+  }
+
+  bool read(const char * const s) const {
+    assert(nullptr != s);
+    assert(nullptr != wand);
+    return MagickReadImage(wand, s) == MagickTrue;
+  }
+
+  bool readBlob(const std::vector< char > & v) const {
+    assert( ! v.empty());
+    assert(nullptr != wand);
+    return MagickReadImageBlob(wand, v.data(), v.size()) == MagickTrue;
+  }
+
+  bool setFormat(const char * const s) const {
+    assert(nullptr != s);
+    assert(nullptr != wand);
+    return MagickSetImageFormat(wand, s) == MagickTrue;
+  }
+
+  bool write(const char * const s) const {
+    assert(nullptr != s);
+    assert(nullptr != wand);
+    return MagickWriteImage(wand, s) == MagickTrue;
+  }
+};
+
+struct Core {
+  ~Core() {
     MagickCoreTerminus();
   }
 
-  MagickCore(void) {
-    MagickCoreGenesis("/tmp", MagickTrue);
+  Core(void) {
+    MagickCoreGenesis("/tmp", MagickFalse);
   }
 };
+
+} //end of magick namespace
 
 struct QueryMap {
   typedef StringViewVector Vector;
@@ -151,14 +206,33 @@ const QueryMap::Vector QueryMap::emptyValues;
 CharPointerVector QueryParameterToArguments(CharVector & v) {
   CharPointerVector result;
   result.reserve(32);
+
+  for (auto & c : v) {
+    switch (c) {
+    case '.':
+      c = '+';
+      break;
+    case '_':
+      c = '/';
+      break;
+    case '-':
+      c = '=';
+      break;
+    default:
+      break;
+    }
+  }
+
   std::size_t s = 0;
-  TSBase64Decode(v.data(), v.size(), reinterpret_cast< unsigned char * >(v.data()),
-      v.size(), &s);
+  TSBase64Decode(v.data(), v.size(), reinterpret_cast< unsigned char * >(v.data()), v.size(), &s);
+
   v.resize(s);
-  std::cout << std::string_view(v.data(), v.size()) << std::endl;
+
+  std::cout << std::string_view(v.data(), v.size()) << " (size: " << v.size() << ")" << std::endl;
   std::size_t i = 0, j = 0;
   for (; i < v.size(); ++i) {
     char & c = v[i];
+    assert('\0' != c);
     if (' ' == c) {
       if (i > j) {
         result.push_back(&v[j]);
@@ -197,17 +271,31 @@ struct ImageTransform : TransformationPlugin {
   }
 
   void handleInputComplete(void) override {
-    MagickImageInfo image;
-    MagickExceptionInfo exception;
+    magick::Image image;
+    magick::Exception exception;
+    magick::Wand wand;
 
-    MagickImageCommand(image.info, argumentMap_.size(),
-        argumentMap_.data(), NULL, exception.info);
+    std::cout << "blob size " << blob_.size() << std::endl;
+    wand.readBlob(blob_);
+    //wand.read("/tmp/image2");
+    wand.write("mpr:b");
+
+    bool result = MagickCommandGenesis(image.info, ConvertImageCommand,
+      argumentMap_.size(), argumentMap_.data(), NULL, exception.info) == MagickTrue;
+
+    std::cout << "result " << (result ? "true" : "false") << std::endl;
 
     if (exception.info->severity != UndefinedException) {
-      CatchException(exception.info);
+      //CatchException(exception.info);
     }
 
-    //produce(std::string_view(reinterpret_cast< const char * >(""), 0));
+    wand.clear();
+    wand.read("mpr:a");
+    //wand.setFormat("jpeg");
+
+    const std::string_view output = wand.get();
+    std::cout << "output size: " << output.size() << std::endl;
+    produce(output);
 
     setOutputComplete();
   }
@@ -218,14 +306,13 @@ struct ImageTransform : TransformationPlugin {
 };
 
 struct GlobalHookPlugin : GlobalPlugin {
-  MagickCore magickCore;
+  magick::Core core;
 
   GlobalHookPlugin(void) {
     registerHook(HOOK_READ_RESPONSE_HEADERS);
   }
 
   void handleReadResponseHeaders(Transaction & t) override {
-    std::cout << "Hello World!" << std::endl;
     const string contentType = t.getServerResponse().getHeaders().values("Content-Type");
     {
       const QueryMap queryMap(t.getServerRequest().getUrl().getQuery());
@@ -233,7 +320,8 @@ struct GlobalHookPlugin : GlobalPlugin {
         const auto & magickQueryParameter = queryMap["magick"];
         if ( ! magickQueryParameter.empty()) {
           const auto & view = magickQueryParameter.front();
-          std::cout << "base64 " << view << std::endl;
+          std::cout << "base64 " << view << " (size: "
+            << view.size() << ")" << std::endl;
           CharVector magick(view.data(), view.data() + view.size());
           if (true) {
             const auto & magickSigQueryParameter = queryMap["magickSig"];
