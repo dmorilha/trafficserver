@@ -226,7 +226,6 @@ CharPointerVector QueryParameterToArguments(CharVector & v) {
 
   v.resize(s);
 
-  std::cout << std::string_view(v.data(), v.size()) << " (size: " << v.size() << ")" << std::endl;
   std::size_t i = 0, j = 0;
   for (; i < v.size(); ++i) {
     char & c = v[i];
@@ -269,14 +268,12 @@ struct ImageTransform : TransformationPlugin {
     magick::Exception exception;
     magick::Wand wand;
 
-    std::cout << "blob size " << blob_.size() << std::endl;
     wand.readBlob(blob_);
     wand.write("mpr:b");
 
     bool result = MagickCommandGenesis(image.info, ConvertImageCommand,
       argumentMap_.size(), argumentMap_.data(), NULL, exception.info) == MagickTrue;
 
-    std::cout << "result " << (result ? "true" : "false") << std::endl;
 
     if (exception.info->severity != UndefinedException) {
       //CatchException(exception.info);
@@ -287,7 +284,6 @@ struct ImageTransform : TransformationPlugin {
     //wand.setFormat("jpeg");
 
     const std::string_view output = wand.get();
-    std::cout << "output size: " << output.size() << std::endl;
     produce(output);
 
     setOutputComplete();
@@ -313,8 +309,6 @@ struct GlobalHookPlugin : GlobalPlugin {
         const auto & magickQueryParameter = queryMap["magick"];
         if ( ! magickQueryParameter.empty()) {
           const auto & view = magickQueryParameter.front();
-          std::cout << "base64 " << view << " (size: "
-            << view.size() << ")" << std::endl;
           CharVector magick(view.data(), view.data() + view.size());
           if (true) {
             const auto & magickSigQueryParameter = queryMap["magickSig"];
