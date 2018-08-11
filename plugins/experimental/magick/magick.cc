@@ -205,6 +205,7 @@ CharPointerVector QueryParameterToArguments(CharVector & v) {
   CharPointerVector result;
   result.reserve(32);
 
+  //TODO(dan): we better just url escape this
   for (auto & c : v) {
     switch (c) {
     case '.':
@@ -255,7 +256,7 @@ struct ImageTransform : TransformationPlugin {
   }
 
   void handleReadResponseHeaders(Transaction & t) override {
-    //TODO(daniel): content-type has to be extracted from ImageInfo?
+    //TODO(dan): content-type has to be extracted from ImageInfo?
     t.resume();
   }
 
@@ -332,7 +333,5 @@ void TSPluginInit(int, const char * *) {
   if ( ! RegisterGlobalPlugin("magick", "apache", "dmorilha@gmail.com")) {
     return;
   }
-
-  //TODO(daniel): LEAK!!!
   new GlobalHookPlugin();
 }
