@@ -30,6 +30,8 @@
 
 #include <ts/ts.h>
 
+#include <openssl/evp.h>
+
 #include "MagickWand/MagickWand.h"
 #include "MagickWand/magick-cli.h"
 
@@ -39,8 +41,62 @@ using namespace atscppapi;
 typedef std::vector< char > CharVector;
 typedef std::vector< char * > CharPointerVector;
 typedef std::vector< std::string_view > StringViewVector;
+typedef unsigned char byte;
 
 namespace magick {
+
+bool hmacVerify(const byte * const m, const size_t ml, const byte * const s, const size_t sl, EVP_PKEY * const k)
+{
+  assert(nullptr != m);
+  assert(0 < ml);
+  assert(nullptr != s);
+  assert(0 < sl);
+  assert(nullptr != m);
+
+  bool result = false;
+  EVP_MD_CTX * context = EVP_MD_CTX_create();
+  assert(nullptr != context);
+
+  const EVP_MD * const md = EVP_get_digestbyname("SHA256");
+  assert(nullptr != md);
+
+  {
+    const int rc = EVP_DigestInit_ex(context, md, nullptr);
+    assert(1 == rc);
+  }
+
+  {
+    const int rc = EVP_DigestSignInit(context, nullptr, md, nullptr, k);
+    assert(1 == rc);
+  }
+
+  {
+    const int rc = EVP_DigestSignUpdate(context, m, ml);
+    assert(1 == rc);
+  }
+
+  {
+    byte buffer[EVP_MAX_MD_SIZE];
+    size_t size = sizeof(buffer);
+
+    {
+      const int rc = EVP_DigestSignFinal(context, buffer, &size);
+      assert(1 == rc);
+    }
+
+    assert(0 < size);
+    const size_t m = sl < size ? sl : size;
+    result = static_cast< bool >(CRYPTO_memcmp(s, buffer, m));
+    OPENSSL_cleanse(buffer, sizeof(buffer));
+  }
+
+  if (nullptr != context) {
+    EVP_MD_CTX_destroy(context);
+    context = nullptr;
+  }
+
+  return result;
+}
 
 struct Exception {
   ExceptionInfo * info;
