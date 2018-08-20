@@ -367,16 +367,28 @@ struct GlobalHookPlugin : GlobalPlugin {
         if ( ! magickQueryParameter.empty()) {
           const auto & view = magickQueryParameter.front();
           CharVector magick(view.data(), view.data() + view.size());
+
+          bool verified = false;
+
           if (true) {
+            EVP_PKEY * const key = nullptr;
             const auto & magickSigQueryParameter = queryMap["magickSig"];
             if ( ! magickQueryParameter.empty()) {
               const auto & magickSig = magickSigQueryParameter.front();
+              verified = magick::hmacVerify(
+                  reinterpret_cast< const byte * >(magick.data()), magick.size(),
+                  reinterpret_cast< const byte * >(magickSig.data()), magickSig.size(),
+                  key);
             }
+          } else {
+            verified = true;
           }
 
-          CharPointerVector argumentMap = QueryParameterToArguments(magick);
-          t.addPlugin(new ImageTransform(t,
-                std::move(magick), std::move(argumentMap)));
+          if (verified) {
+            CharPointerVector argumentMap = QueryParameterToArguments(magick);
+            t.addPlugin(new ImageTransform(t,
+                  std::move(magick), std::move(argumentMap)));
+          }
         }
       }
     }
