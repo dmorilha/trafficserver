@@ -99,6 +99,7 @@ endif
 
 if BUILD_WEBP_TRANSFORM_PLUGIN
 include experimental/webp_transform/Makefile.inc
+include experimental/magick/Makefile.inc
 endif
 
 if HAS_MYSQL
